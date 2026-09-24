@@ -24,6 +24,7 @@ export default function App() {
     const game = new Game(canvas);
     gameRef.current = game;
     game.start();
+    canvas.focus();
 
     // Scale canvas responsively to maintain 1280x720 aspect ratio
     const handleResize = () => {
@@ -151,6 +152,8 @@ export default function App() {
           height={720}
           className="pixel-sharp block bg-black shadow-2xl outline-none"
           tabIndex={0}
+          style={{ touchAction: 'none' }}
+          onClick={() => canvasRef.current?.focus()}
         />
 
         {/* Quick Controls Modal Overlay */}

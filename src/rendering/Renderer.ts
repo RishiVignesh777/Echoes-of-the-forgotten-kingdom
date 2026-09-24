@@ -18,7 +18,7 @@ import { TileMap } from '../world/TileMap.ts';
 import { ParticleSystem } from './ParticleSystem.ts';
 import { Lighting } from './Lighting.ts';
 import { HUD } from '../ui/HUD.ts';
-import { Menu } from '../ui/Menu.ts';
+import { Menu, MenuCallbacks } from '../ui/Menu.ts';
 import { GameMode } from '../game/GameState.ts';
 import { Input } from '../game/Input.ts';
 import { TimelessKing } from '../entities/Boss.ts';
@@ -229,19 +229,7 @@ export class Renderer {
     menu: Menu,
     mode: GameMode,
     input: Input,
-    callbacks: {
-      onStart: () => void;
-      onResume: () => void;
-      onRestart: () => void;
-      onRespawn: () => void;
-      onSelectLevel: (levelId: string) => void;
-      onToggleControls: () => void;
-      onToggleSound: () => boolean;
-      onToggleMusic: () => boolean;
-      onMainMenu: () => void;
-      isSoundEnabled: () => boolean;
-      isMusicEnabled: () => boolean;
-    }
+    callbacks: MenuCallbacks
   ): void {
     menu.render(this.ctx, mode, input, callbacks);
   }

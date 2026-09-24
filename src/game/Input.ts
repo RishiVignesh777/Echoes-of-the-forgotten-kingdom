@@ -3,44 +3,94 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 export class Input {
+  private canvas: HTMLCanvasElement | null = null;
   private keysDown: Set<string> = new Set();
   private keysPressedThisFrame: Set<string> = new Set();
   private keysReleasedThisFrame: Set<string> = new Set();
   private keyHoldDuration: Map<string, number> = new Map();
 
-  // Mouse / Pointer
-  public mouseX: number = 0;
-  public mouseY: number = 0;
+  // Mouse / Pointer virtual resolution (1280x720)
+  public mouseX: number = 640;
+  public mouseY: number = 360;
   public mouseClicked: boolean = false;
   public mouseDown: boolean = false;
 
+  // Callbacks
+  public onCanvasClick?: (x: number, y: number) => void;
+  public onCanvasHover?: (x: number, y: number) => void;
+
   private boundKeyDown: (e: KeyboardEvent) => void;
   private boundKeyUp: (e: KeyboardEvent) => void;
-  private boundMouseMove: (e: MouseEvent) => void;
-  private boundMouseDown: (e: MouseEvent) => void;
-  private boundMouseUp: (e: MouseEvent) => void;
+  private boundPointerMove: (e: PointerEvent) => void;
+  private boundPointerDown: (e: PointerEvent) => void;
+  private boundPointerUp: (e: PointerEvent) => void;
+  private boundClick: (e: MouseEvent) => void;
 
-  constructor() {
+  constructor(canvas?: HTMLCanvasElement) {
+    this.canvas = canvas || (document.getElementById('game-canvas') as HTMLCanvasElement | null);
+
     this.boundKeyDown = this.handleKeyDown.bind(this);
     this.boundKeyUp = this.handleKeyUp.bind(this);
-    this.boundMouseMove = this.handleMouseMove.bind(this);
-    this.boundMouseDown = this.handleMouseDown.bind(this);
-    this.boundMouseUp = this.handleMouseUp.bind(this);
+    this.boundPointerMove = this.handlePointerMove.bind(this);
+    this.boundPointerDown = this.handlePointerDown.bind(this);
+    this.boundPointerUp = this.handlePointerUp.bind(this);
+    this.boundClick = this.handleClick.bind(this);
 
     window.addEventListener('keydown', this.boundKeyDown);
     window.addEventListener('keyup', this.boundKeyUp);
-    window.addEventListener('mousemove', this.boundMouseMove);
-    window.addEventListener('mousedown', this.boundMouseDown);
-    window.addEventListener('mouseup', this.boundMouseUp);
+    window.addEventListener('pointerup', this.boundPointerUp);
+
+    this.attachCanvasListeners();
+  }
+
+  public setCanvas(canvas: HTMLCanvasElement): void {
+    this.detachCanvasListeners();
+    this.canvas = canvas;
+    this.attachCanvasListeners();
+  }
+
+  private attachCanvasListeners(): void {
+    const target = this.canvas || (document.getElementById('game-canvas') as HTMLCanvasElement | null);
+    if (!target) return;
+    this.canvas = target;
+
+    target.addEventListener('pointermove', this.boundPointerMove);
+    target.addEventListener('pointerdown', this.boundPointerDown);
+    target.addEventListener('click', this.boundClick);
+  }
+
+  private detachCanvasListeners(): void {
+    if (this.canvas) {
+      this.canvas.removeEventListener('pointermove', this.boundPointerMove);
+      this.canvas.removeEventListener('pointerdown', this.boundPointerDown);
+      this.canvas.removeEventListener('click', this.boundClick);
+    }
   }
 
   public destroy(): void {
     window.removeEventListener('keydown', this.boundKeyDown);
     window.removeEventListener('keyup', this.boundKeyUp);
-    window.removeEventListener('mousemove', this.boundMouseMove);
-    window.removeEventListener('mousedown', this.boundMouseDown);
-    window.removeEventListener('mouseup', this.boundMouseUp);
+    window.removeEventListener('pointerup', this.boundPointerUp);
+    this.detachCanvasListeners();
+  }
+
+  public updatePointerPosition(clientX: number, clientY: number): void {
+    const canvas = this.canvas || (document.getElementById('game-canvas') as HTMLCanvasElement | null);
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      const scaleX = 1280 / rect.width;
+      const scaleY = 720 / rect.height;
+      this.mouseX = (clientX - rect.left) * scaleX;
+      this.mouseY = (clientY - rect.top) * scaleY;
+    }
   }
 
   private normalizeKey(key: string): string {
@@ -54,7 +104,6 @@ export class Input {
   }
 
   private handleKeyDown(e: KeyboardEvent): void {
-    // Prevent default scrolling for game keys
     const code = e.code.toLowerCase();
     if (['space', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(code)) {
       e.preventDefault();
@@ -74,40 +123,55 @@ export class Input {
     this.keyHoldDuration.delete(key);
   }
 
-  private handleMouseMove(e: MouseEvent): void {
-    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement | null;
-    if (canvas) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = 1280 / rect.width;
-      const scaleY = 720 / rect.height;
-      this.mouseX = (e.clientX - rect.x) * scaleX;
-      this.mouseY = (e.clientY - rect.y) * scaleY;
-    }
+  private handlePointerMove(e: PointerEvent): void {
+    this.updatePointerPosition(e.clientX, e.clientY);
+    this.onCanvasHover?.(this.mouseX, this.mouseY);
   }
 
-  private handleMouseDown(e: MouseEvent): void {
+  private handlePointerDown(e: PointerEvent): void {
     if (e.button === 0) {
+      this.updatePointerPosition(e.clientX, e.clientY);
       this.mouseDown = true;
       this.mouseClicked = true;
+      this.onCanvasClick?.(this.mouseX, this.mouseY);
     }
   }
 
-  private handleMouseUp(e: MouseEvent): void {
+  private handlePointerUp(e: PointerEvent): void {
     if (e.button === 0) {
+      this.updatePointerPosition(e.clientX, e.clientY);
       this.mouseDown = false;
     }
   }
 
-  public update(deltaTime: number): void {
-    // Clear transient one-frame states
-    this.keysPressedThisFrame.clear();
-    this.keysReleasedThisFrame.clear();
-    this.mouseClicked = false;
+  private handleClick(e: MouseEvent): void {
+    if (e.button === 0) {
+      this.updatePointerPosition(e.clientX, e.clientY);
+      this.mouseClicked = true;
+      this.onCanvasClick?.(this.mouseX, this.mouseY);
+    }
+  }
 
-    // Increment hold durations
+  public consumeClick(): boolean {
+    const wasClicked = this.mouseClicked;
+    this.mouseClicked = false;
+    return wasClicked;
+  }
+
+  public update(deltaTime: number): void {
+    // Increment hold durations only (do not clear transient single-frame presses here!)
     for (const [key, duration] of this.keyHoldDuration.entries()) {
       this.keyHoldDuration.set(key, duration + deltaTime);
     }
+  }
+
+  /**
+   * Called at the VERY END of the frame loop after both update() and render() finish
+   */
+  public endFrame(): void {
+    this.keysPressedThisFrame.clear();
+    this.keysReleasedThisFrame.clear();
+    this.mouseClicked = false;
   }
 
   public isDown(key: string): boolean {
@@ -179,3 +243,4 @@ export class Input {
     return this.isJustPressed('escape') || this.isJustPressed('p');
   }
 }
+

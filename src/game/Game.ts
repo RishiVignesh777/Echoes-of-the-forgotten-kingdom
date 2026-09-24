@@ -30,7 +30,7 @@ import { EchoSystem } from '../systems/EchoSystem.ts';
 import { PhysicsSystem } from '../systems/PhysicsSystem.ts';
 import { AudioSystem } from '../systems/AudioSystem.ts';
 import { HUD } from '../ui/HUD.ts';
-import { Menu } from '../ui/Menu.ts';
+import { Menu, MenuCallbacks } from '../ui/Menu.ts';
 import { Collision } from './Collision.ts';
 
 export class Game {
@@ -65,12 +65,13 @@ export class Game {
   public activeBoss: TimelessKing | null = null;
 
   private isRunning: boolean = false;
+  private animationFrameId: number | null = null;
   private weatherTimer: number = 0;
   private previousMenuMode: GameMode = GameMode.MENU;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.input = new Input();
+    this.input = new Input(canvas);
     this.camera = new Camera(1280, 720);
     this.renderer = new Renderer(canvas);
     this.particleSystem = new ParticleSystem();
@@ -83,8 +84,63 @@ export class Game {
     this.menu = new Menu();
     this.tileMap = new TileMap();
 
+    // Direct canvas click handler for zero-latency button response
+    this.input.onCanvasClick = (x, y) => this.handleCanvasClick(x, y);
+
     // Initial level
     this.loadLevel('village');
+  }
+
+  private handleCanvasClick(x: number, y: number): void {
+    this.audioSystem.unlock();
+    if (this.mode !== GameMode.PLAYING) {
+      this.menu.handleClick(x, y, this.mode, this.getMenuCallbacks());
+    }
+  }
+
+  public getMenuCallbacks(): MenuCallbacks {
+    return {
+      onStart: () => {
+        this.mode = GameMode.PLAYING;
+        this.audioSystem.unlock();
+      },
+      onResume: () => {
+        this.mode = GameMode.PLAYING;
+      },
+      onRestart: () => {
+        this.loadLevel(this.currentLevel.id);
+        this.mode = GameMode.PLAYING;
+      },
+      onRespawn: () => {
+        this.player.respawn();
+        this.mode = GameMode.PLAYING;
+      },
+      onSelectLevel: (levelId: string) => {
+        if (this.mode === GameMode.LEVEL_SELECT) {
+          this.loadLevel(levelId);
+          this.mode = GameMode.PLAYING;
+        } else {
+          this.previousMenuMode = this.mode;
+          this.mode = GameMode.LEVEL_SELECT;
+        }
+      },
+      onToggleControls: () => {
+        if (this.mode === GameMode.CONTROLS) {
+          this.mode = this.previousMenuMode;
+        } else {
+          this.previousMenuMode = this.mode;
+          this.mode = GameMode.CONTROLS;
+        }
+      },
+      onToggleSound: () => this.audioSystem.toggleSound(),
+      onToggleMusic: () => this.audioSystem.toggleMusic(),
+      onMainMenu: () => {
+        this.loadLevel('village');
+        this.mode = GameMode.MENU;
+      },
+      isSoundEnabled: () => this.audioSystem.soundEnabled,
+      isMusicEnabled: () => this.audioSystem.musicEnabled,
+    };
   }
 
   public loadLevel(levelId: string): void {
@@ -182,32 +238,32 @@ export class Game {
 
       this.update(deltaTime);
       this.render();
+      this.input.endFrame();
 
-      requestAnimationFrame(loop);
+      this.animationFrameId = requestAnimationFrame(loop);
     };
 
-    requestAnimationFrame(loop);
+    this.animationFrameId = requestAnimationFrame(loop);
   }
 
   public update(deltaTime: number): void {
     this.input.update(deltaTime);
-    this.menu.update(deltaTime);
 
     // Audio unlock on user action
     if (this.input.mouseClicked || this.input.attack || this.input.jump) {
       this.audioSystem.unlock();
     }
 
-    // Toggle Pause
-    if (this.input.pause) {
-      if (this.mode === GameMode.PLAYING) {
-        this.mode = GameMode.PAUSED;
-      } else if (this.mode === GameMode.PAUSED) {
-        this.mode = GameMode.PLAYING;
-      }
+    // Handle Menus & Modals
+    if (this.mode !== GameMode.PLAYING) {
+      this.menu.update(deltaTime, this.mode, this.input, this.getMenuCallbacks());
+      return;
     }
 
-    if (this.mode !== GameMode.PLAYING) {
+    // Toggle Pause
+    if (this.input.pause) {
+      this.previousMenuMode = GameMode.PLAYING;
+      this.mode = GameMode.PAUSED;
       return;
     }
 
@@ -518,52 +574,18 @@ export class Game {
 
     // 8. Menus & Modals
     if (this.mode !== GameMode.PLAYING) {
-      this.renderer.renderMenu(this.menu, this.mode, this.input, {
-        onStart: () => {
-          this.mode = GameMode.PLAYING;
-          this.audioSystem.unlock();
-        },
-        onResume: () => {
-          this.mode = GameMode.PLAYING;
-        },
-        onRestart: () => {
-          this.loadLevel(this.currentLevel.id);
-          this.mode = GameMode.PLAYING;
-        },
-        onRespawn: () => {
-          this.player.respawn();
-          this.mode = GameMode.PLAYING;
-        },
-        onSelectLevel: (levelId: string) => {
-          if (this.mode === GameMode.LEVEL_SELECT) {
-            this.loadLevel(levelId);
-            this.mode = GameMode.PLAYING;
-          } else {
-            this.mode = GameMode.LEVEL_SELECT;
-          }
-        },
-        onToggleControls: () => {
-          if (this.mode === GameMode.CONTROLS) {
-            this.mode = this.previousMenuMode;
-          } else {
-            this.previousMenuMode = this.mode;
-            this.mode = GameMode.CONTROLS;
-          }
-        },
-        onToggleSound: () => this.audioSystem.toggleSound(),
-        onToggleMusic: () => this.audioSystem.toggleMusic(),
-        onMainMenu: () => {
-          this.loadLevel('village');
-          this.mode = GameMode.MENU;
-        },
-        isSoundEnabled: () => this.audioSystem.soundEnabled,
-        isMusicEnabled: () => this.audioSystem.musicEnabled,
-      });
+      this.renderer.renderMenu(this.menu, this.mode, this.input, this.getMenuCallbacks());
     }
   }
 
   public destroy(): void {
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    this.isRunning = false;
     this.input.destroy();
     this.audioSystem.destroy();
   }
 }
+
