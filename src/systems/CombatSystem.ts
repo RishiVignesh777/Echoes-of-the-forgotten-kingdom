@@ -38,7 +38,16 @@ export class CombatSystem {
         if (enemy.isDead || enemy.hurtTimer > 0) continue;
 
         if (Collision.aabb(hb, enemy)) {
-          const killed = enemy.takeDamage(hb.damage, hb.knockbackX, hb.knockbackY);
+          // Determine push direction: push enemy directly away from attacker/blade
+          const attackerCenterX = hb.ownerId === 'player' ? player.x + player.width / 2 : hb.x + hb.width / 2;
+          const enemyCenterX = enemy.x + enemy.width / 2;
+          const pushDir = enemyCenterX > attackerCenterX ? 1 : enemyCenterX < attackerCenterX ? -1 : (hb.knockbackX >= 0 ? 1 : -1);
+
+          const baseKnockX = Math.abs(hb.knockbackX) > 0 ? Math.abs(hb.knockbackX) : (hb.isHeavy ? 380 : 250);
+          const knockbackX = pushDir * baseKnockX;
+          const knockbackY = hb.knockbackY !== undefined ? hb.knockbackY : (hb.isHeavy ? -160 : -100);
+
+          const killed = enemy.takeDamage(hb.damage, knockbackX, knockbackY);
 
           // Impact feedback
           audio.playSwordClash(hb.isHeavy);

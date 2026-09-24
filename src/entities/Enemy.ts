@@ -37,6 +37,7 @@ export abstract class Enemy implements Rect {
   public detectRange: number = 280;
   public attackRange: number = 55;
   public moveSpeed: number = 110;
+  public knockbackResistance: number = 1.0;
 
   constructor(
     id: string,
@@ -61,13 +62,28 @@ export abstract class Enemy implements Rect {
     this.patrolRight = x + patrolDistance;
   }
 
-  public takeDamage(amount: number, knockbackX: number, knockbackY: number = -80): boolean {
+  public takeDamage(amount: number, knockbackX: number, knockbackY: number = -90): boolean {
     if (this.isDead) return false;
 
     this.health -= amount;
-    this.hurtTimer = 0.25;
-    this.velocityX = knockbackX;
-    this.velocityY = knockbackY;
+    this.hurtTimer = 0.28;
+
+    // Apply knockback velocity with enemy-specific weight factor
+    const factor = this.knockbackResistance;
+    this.velocityX = knockbackX * factor;
+    this.velocityY = knockbackY * factor;
+
+    // Instant satisfying tactile pushback displacement
+    const pushDir = knockbackX >= 0 ? 1 : -1;
+    const instantDisplacement = (amount > 30 ? 14 : 9) * factor;
+    this.x += pushDir * instantDisplacement;
+
+    // Turn to face the attacker as they reel back
+    if (pushDir > 0) {
+      this.facing = -1;
+    } else {
+      this.facing = 1;
+    }
 
     if (this.health <= 0) {
       this.health = 0;
@@ -91,11 +107,19 @@ export abstract class Enemy implements Rect {
   ): { attackHitbox: HitBox | null; newProjectile: Projectile | null; soundEvents: string[] } {
     this.animTime += deltaTime;
 
+    // While in hurt state: apply smooth friction deceleration and prevent AI override
     if (this.hurtTimer > 0) {
       this.hurtTimer -= deltaTime;
+      this.velocityX *= Math.pow(0.04, deltaTime);
+      if (Math.abs(this.velocityX) < 15) {
+        this.velocityX = 0;
+      }
       if (this.hurtTimer <= 0 && !this.isDead) {
         this.state = EnemyState.CHASE;
+        this.velocityX = 0;
       }
+      // When reeling from hit, enemy cannot attack or cancel knockback
+      return { attackHitbox: null, newProjectile: null, soundEvents: [] };
     }
 
     if (this.attackCooldown > 0) {

@@ -62,8 +62,8 @@ export class Echo implements Rect {
         width: hitboxW,
         height: hitboxH,
         damage: isHeavy ? 36 : 18,
-        knockbackX: this.facing * (isHeavy ? 300 : 180),
-        knockbackY: isHeavy ? -150 : -80,
+        knockbackX: this.facing * (isHeavy ? 350 : 230),
+        knockbackY: isHeavy ? -150 : -90,
         isHeavy,
         ownerId: `echo-${this.id}`,
       };

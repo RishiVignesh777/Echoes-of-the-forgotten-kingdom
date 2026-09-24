@@ -205,8 +205,8 @@ export class Player implements Rect {
         width: hitboxW,
         height: hitboxH,
         damage: isHeavy ? 42 : 22,
-        knockbackX: this.facing * (isHeavy ? 360 : 220),
-        knockbackY: isHeavy ? -180 : -90,
+        knockbackX: this.facing * (isHeavy ? 400 : 260),
+        knockbackY: isHeavy ? -170 : -110,
         isHeavy,
         ownerId: 'player',
       };

@@ -15,6 +15,7 @@ export class ShadowWolf extends Enemy {
     this.moveSpeed = 190;
     this.attackRange = 65;
     this.detectRange = 320;
+    this.knockbackResistance = 1.15;
   }
 
   public updateAI(

@@ -21,6 +21,7 @@ export class TimelessKing extends Enemy {
     this.moveSpeed = 110;
     this.attackRange = 90;
     this.detectRange = 800;
+    this.knockbackResistance = 0.45;
   }
 
   public updateAI(

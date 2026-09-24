@@ -15,6 +15,7 @@ export class CorruptedKnight extends Enemy {
     this.moveSpeed = 120;
     this.attackRange = 48;
     this.detectRange = 280;
+    this.knockbackResistance = 0.9;
   }
 
   public updateAI(

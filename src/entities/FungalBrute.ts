@@ -15,6 +15,7 @@ export class FungalBrute extends Enemy {
     this.moveSpeed = 75;
     this.attackRange = 60;
     this.detectRange = 260;
+    this.knockbackResistance = 0.65;
   }
 
   public updateAI(

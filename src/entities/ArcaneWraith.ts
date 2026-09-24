@@ -16,6 +16,7 @@ export class ArcaneWraith extends Enemy {
     this.moveSpeed = 95;
     this.attackRange = 360; // ranged
     this.detectRange = 440;
+    this.knockbackResistance = 1.05;
   }
 
   public updateAI(
