@@ -1,0 +1,6 @@
+{
+  "name": "Echoes of the Forgotten Kingdom",
+  "description": "A 2D medieval fantasy action-adventure game featuring time echoes, tactical sword combat, platforming, and ancient puzzles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

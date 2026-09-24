@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    background-color: #0c0a09;
+    font-family: 'Crimson Pro', Georgia, serif;
+  }
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-medieval {
+  font-family: 'MedievalSharp', cursive, serif;
+}
+
+.font-cinzel-decorative {
+  font-family: 'Cinzel Decorative', cursive, serif;
+}
+
+/* Pixel art rendering for crisp 2D canvas */
+canvas.pixel-sharp {
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
